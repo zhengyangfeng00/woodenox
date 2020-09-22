@@ -17,13 +17,15 @@ func WithPurgeInterval(interval time.Duration) Option {
 }
 
 type options struct {
-	capacity      int
-	purgeInterval time.Duration
+	capacity       int
+	purgeInterval  time.Duration
+	notifyInterval time.Duration
 }
 
 func newOptions() *options {
 	return &options{
-		capacity:      1000,
-		purgeInterval: 10 * time.Second,
+		capacity:       1000,
+		purgeInterval:  10 * time.Second,
+		notifyInterval: time.Second,
 	}
 }

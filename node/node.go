@@ -39,10 +39,10 @@ func (n *Node) SetProcessor(p Processor) {
 	n.processor = p
 }
 
-func (n *Node) Subscribe(stream string) {
-	iter, unsubFunc := n.mb.Subscribe(stream)
+func (n *Node) Subscribe(s string) {
+	iter, unsubFunc := n.mb.Subscribe(s, stream.WithBlock())
 	n.iters = append(n.iters, streamIter{
-		stream:    stream,
+		stream:    s,
 		iter:      iter,
 		unsubFunc: unsubFunc,
 	})

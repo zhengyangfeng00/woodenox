@@ -61,7 +61,7 @@ func (m *messageBus) getOrCreateStream(
 	s, ok := m.streams[name]
 	if !ok {
 		s = m.newStreamFn(name, opts...)
-		s.Run()
+		go s.Run()
 		m.streams[name] = s
 	}
 	return s

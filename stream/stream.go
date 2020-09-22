@@ -32,9 +32,10 @@ type subscriberWithOffset struct {
 }
 
 type streamImpl struct {
-	name          string
-	capacity      int
-	purgeInterval time.Duration
+	name           string
+	capacity       int
+	purgeInterval  time.Duration
+	notifyInterval time.Duration
 
 	// A coarse-grained lock for the whole structure.
 	mu sync.Mutex
@@ -45,8 +46,12 @@ type streamImpl struct {
 	startOffset int64
 	buf         []iterator.Item
 	subscribers map[*streamIter]*subscriberWithOffset
-	ticker      *time.Ticker
-	done        chan struct{}
+	purgeTicker *time.Ticker
+	// notifyTicker is used to make spurious notify call to
+	// subscribers in case they miss the notify message when a new
+	// item is added.
+	notifyTicker *time.Ticker
+	done         chan struct{}
 }
 
 func New(name string, opts ...Option) Stream {
@@ -55,19 +60,24 @@ func New(name string, opts ...Option) Stream {
 		opt(options)
 	}
 	return &streamImpl{
-		name:        name,
-		capacity:    options.capacity,
-		subscribers: make(map[*streamIter]*subscriberWithOffset),
-		done:        make(chan struct{}),
-		ticker:      time.NewTicker(options.purgeInterval),
+		name:         name,
+		capacity:     options.capacity,
+		subscribers:  make(map[*streamIter]*subscriberWithOffset),
+		done:         make(chan struct{}),
+		purgeTicker:  time.NewTicker(options.purgeInterval),
+		notifyTicker: time.NewTicker(options.notifyInterval),
 	}
 }
 
 func (s *streamImpl) Run() {
 	for {
 		select {
-		case <-s.ticker.C:
+		case <-s.purgeTicker.C:
 			s.purge()
+		case <-s.notifyTicker.C:
+			s.mu.Lock()
+			s.notifyWithLockHeld()
+			s.mu.Unlock()
 		case <-s.done:
 			return
 		}
@@ -131,10 +141,14 @@ func (s *streamImpl) Accept(item iterator.Item) error {
 		return errStreamFull
 	}
 	s.buf = append(s.buf, item)
+	s.notifyWithLockHeld()
+	return nil
+}
+
+func (s *streamImpl) notifyWithLockHeld() {
 	for _, sub := range s.subscribers {
 		sub.it.notify()
 	}
-	return nil
 }
 
 // purge removes old items from buffer. It is called inside the
@@ -159,6 +173,11 @@ func (s *streamImpl) purge() {
 		if lowestOffset > o {
 			lowestOffset = o
 		}
+	}
+
+	// Some subscribers haven't started consuming.
+	if lowestOffset == -1 {
+		return
 	}
 
 	// delete items before lowestOffset

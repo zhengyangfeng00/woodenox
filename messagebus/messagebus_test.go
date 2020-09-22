@@ -15,7 +15,7 @@ func TestMessageBus(t *testing.T) {
 
 		mb := New().(*messageBus)
 		s := stream.NewMockStream(ctrl)
-		s.EXPECT().Run()
+		s.EXPECT().Run().MaxTimes(1)
 		s.EXPECT().Stop()
 		s.EXPECT().NewSubscriber(gomock.Any())
 		mb.newStreamFn = func(
@@ -35,7 +35,7 @@ func TestMessageBus(t *testing.T) {
 
 		mb := New().(*messageBus)
 		s := stream.NewMockStream(ctrl)
-		s.EXPECT().Run()
+		s.EXPECT().Run().MaxTimes(1)
 		s.EXPECT().Stop()
 		s.EXPECT().Accept(gomock.Any())
 		mb.newStreamFn = func(
