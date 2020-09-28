@@ -1,6 +1,10 @@
 package stream
 
-import "time"
+import (
+	"time"
+
+	"go.uber.org/zap"
+)
 
 type Option func(*options)
 
@@ -16,10 +20,17 @@ func WithPurgeInterval(interval time.Duration) Option {
 	}
 }
 
+func WithLogger(l *zap.Logger) Option {
+	return func(o *options) {
+		o.logger = l
+	}
+}
+
 type options struct {
 	capacity       int
 	purgeInterval  time.Duration
 	notifyInterval time.Duration
+	logger         *zap.Logger
 }
 
 func newOptions() *options {
@@ -27,5 +38,6 @@ func newOptions() *options {
 		capacity:       1000,
 		purgeInterval:  10 * time.Second,
 		notifyInterval: time.Second,
+		logger:         zap.NewNop(),
 	}
 }

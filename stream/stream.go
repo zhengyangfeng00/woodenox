@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/zhengyangfeng00/woodenox/iterator"
+	"go.uber.org/zap"
 )
 
 var (
@@ -36,6 +37,7 @@ type streamImpl struct {
 	capacity       int
 	purgeInterval  time.Duration
 	notifyInterval time.Duration
+	logger         *zap.Logger
 
 	// A coarse-grained lock for the whole structure.
 	mu sync.Mutex
@@ -66,6 +68,7 @@ func New(name string, opts ...Option) Stream {
 		done:         make(chan struct{}),
 		purgeTicker:  time.NewTicker(options.purgeInterval),
 		notifyTicker: time.NewTicker(options.notifyInterval),
+		logger:       options.logger,
 	}
 }
 
@@ -141,6 +144,12 @@ func (s *streamImpl) Accept(item iterator.Item) error {
 		return errStreamFull
 	}
 	s.buf = append(s.buf, item)
+
+	s.logger.Debug(
+		"notifying subscribers",
+		zap.String("stream", s.name),
+		zap.Int("numOfSubscribers", len(s.subscribers)),
+	)
 	s.notifyWithLockHeld()
 	return nil
 }

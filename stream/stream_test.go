@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -35,6 +36,41 @@ func TestStream(t *testing.T) {
 				return
 			}
 		}
+	})
+
+	t.Run("2 subscribers", func(t *testing.T) {
+		s := New("test").(*streamImpl)
+
+		sub1, unsub1 := s.NewSubscriber(WithBlock())
+		sub2, unsub2 := s.NewSubscriber(WithBlock())
+
+		var wg sync.WaitGroup
+		waitTillReceive := func(it iterator.Iterator, unsub UnsubFunc) {
+			defer wg.Done()
+			it.Next()
+			unsub()
+		}
+
+		wg.Add(2)
+		go waitTillReceive(sub1, unsub1)
+		go waitTillReceive(sub2, unsub2)
+
+		// Start a goroutine that keeps producing items to the stream
+		// until both subscribers have received at least one item.
+		done := make(chan struct{})
+		go func() {
+			for {
+				select {
+				case <-done:
+					return
+				default:
+					s.Accept(iterator.Item{})
+				}
+			}
+		}()
+
+		wg.Wait()
+		close(done)
 	})
 }
 

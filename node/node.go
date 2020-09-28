@@ -53,9 +53,9 @@ func (n *Node) Run() {
 	for _, tp := range n.iters {
 		go func(si streamIter) {
 			// N.B: we expect the iterator to block when there is no new items.
-			for tp.iter.Next() {
+			for si.iter.Next() {
 				select {
-				case items <- streamItem{stream: si.stream, item: tp.iter.Curr()}:
+				case items <- streamItem{stream: si.stream, item: si.iter.Curr()}:
 				case <-n.done:
 					return
 				}

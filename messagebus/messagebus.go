@@ -5,6 +5,7 @@ import (
 
 	"github.com/zhengyangfeng00/woodenox/iterator"
 	"github.com/zhengyangfeng00/woodenox/stream"
+	"go.uber.org/zap"
 )
 
 type MessageBus interface {
@@ -17,14 +18,16 @@ type MessageBus interface {
 }
 
 type messageBus struct {
+	logger     *zap.Logger
 	streamLock sync.Mutex
 	streams    map[string]stream.Stream
 
 	newStreamFn func(name string, opts ...stream.Option) stream.Stream
 }
 
-func New() MessageBus {
+func New(l *zap.Logger) MessageBus {
 	mb := &messageBus{
+		logger:  l,
 		streams: make(map[string]stream.Stream),
 	}
 	mb.newStreamFn = stream.New
@@ -35,7 +38,7 @@ func (m *messageBus) Subscribe(
 	s string,
 	opts ...stream.SubscribeOpt,
 ) (iterator.Iterator, stream.UnsubFunc) {
-	return m.getOrCreateStream(s).NewSubscriber(opts...)
+	return m.getOrCreateStream(s, stream.WithLogger(m.logger)).NewSubscriber(opts...)
 }
 
 func (m *messageBus) ProduceTo(stream string, opts ...stream.ProduceOpt) Output {

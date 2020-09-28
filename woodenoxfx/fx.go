@@ -3,6 +3,7 @@ package woodenoxfx
 import (
 	"github.com/zhengyangfeng00/woodenox/messagebus"
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 )
 
 var Module = fx.Options(
@@ -11,6 +12,8 @@ var Module = fx.Options(
 
 type Params struct {
 	fx.In
+
+	Logger *zap.Logger
 }
 
 type Result struct {
@@ -21,6 +24,6 @@ type Result struct {
 
 func newModule(p Params) Result {
 	return Result{
-		MessageBus: messagebus.New(),
+		MessageBus: messagebus.New(p.Logger),
 	}
 }
